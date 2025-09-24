@@ -34,3 +34,9 @@ target_link_libraries(hello_window
     glfw
     OpenGL::GL
 )
+
+add_custom_command(TARGET hello_window POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/models
+    ${CMAKE_BINARY_DIR}/models
+)

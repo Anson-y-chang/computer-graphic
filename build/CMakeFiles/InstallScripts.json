@@ -1,9 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/Users/zhangyu-cheng/Desktop/NYCU 114-1/computer graphics/test_compile/build/cmake_install.cmake",
-		"/Users/zhangyu-cheng/Desktop/NYCU 114-1/computer graphics/test_compile/build/dependencies/glfw/cmake_install.cmake",
-		"/Users/zhangyu-cheng/Desktop/NYCU 114-1/computer graphics/test_compile/build/dependencies/glfw/src/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
