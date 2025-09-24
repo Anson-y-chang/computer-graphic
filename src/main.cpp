@@ -25,13 +25,10 @@ float deltaTime = 0.0f;	// 当前帧与上一帧的时间差
 float lastFrame = 0.0f; // 上一帧的时间
 
 // OBJ data
-// std::vector<glm::vec3> vertices;
 std::vector<float> vertices;
 std::vector<unsigned int> indices;
 float angle_x = 0.0f, angle_y = 0.0f;
 bool is_holding_mouse = false;
-
-
 float scale = 1.0f;  // 全局縮放因子
 
 // Mouse
@@ -52,7 +49,6 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     }
 }
 
-// 滑鼠滾輪回調
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     // yoffset > 0: 滾上，縮放放大
     // yoffset < 0: 滾下，縮放縮小
@@ -324,7 +320,6 @@ int main(){
     // Load OBJ
     glm::mat4 identity = glm::mat4(1.0f);
     loadOBJ("../models/dino.obj", identity);
-
 
     // Shader compile
     unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
