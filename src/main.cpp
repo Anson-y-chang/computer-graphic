@@ -1,3 +1,6 @@
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -137,50 +140,94 @@ glm::vec3 read_vec3(std::vector<std::string> words, glm::mat4 preTransform, floa
                      glm::vec4(std::stof(words[1]), std::stof(words[2]), std::stof(words[3]), w));
 }
 
+// opengl 紋理座標系與圖片不同，y 軸要翻轉
 glm::vec2 read_vec2(std::vector<std::string> words) {
-    return glm::vec2(std::stof(words[1]), std::stof(words[2]));
+    return glm::vec2(std::stof(words[1]), 1.0f - std::stof(words[2])); 
 }
 
-void read_face_fixed(std::vector<std::string> words, std::vector<glm::vec3>& v,
-                    std::vector<glm::vec2>& vt, std::vector<glm::vec3>& vn,
-                    std::vector<float>& vertices) {
+// void read_face_fixed_no_texture(std::vector<std::string> words,
+//                     std::vector<glm::vec3>& v,
+//                     std::vector<glm::vec2>& vt, 
+//                     std::vector<glm::vec3>& vn,
+//                     std::vector<float>& vertices) {
     
-    size_t triangleCount = words.size() - 3;  // words[0] is "f"
+//     size_t triangleCount = words.size() - 3;  // words[0] is "f"
+
+//     for (size_t i = 0; i < triangleCount; ++i) {
+//         // Triangle fan: first vertex, current vertex, next vertex
+//         size_t idx1 = std::stoi(words[1]) - 1;      // First vertex (anchor)
+//         size_t idx2 = std::stoi(words[2 + i]) - 1;  // Current vertex
+//         size_t idx3 = std::stoi(words[3 + i]) - 1;  // Next vertex
+
+//         // vertices position
+//         glm::vec3 v1 = v[idx1];
+//         glm::vec3 v2 = v[idx2];
+//         glm::vec3 v3 = v[idx3];
+
+//         // normal vector, if ther is no n in .obj, compute it
+//         glm::vec3 n1, n2, n3;
+//         if (!vn.empty() && idx1 < vn.size() && idx2 < vn.size() && idx3 < vn.size()) {
+//             n1 = vn[idx1];
+//             n2 = vn[idx2];
+//             n3 = vn[idx3];
+//         } else {
+//             glm::vec3 edge1 = v2 - v1;
+//             glm::vec3 edge2 = v3 - v1;
+//             glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
+//             n1 = n2 = n3 = faceNormal;
+//         }
+
+//         // texture coordinates
+//         glm::vec2 vt1 = vt[idx1];
+//         glm::vec2 vt2 = vt[idx2];
+//         glm::vec2 vt3 = vt[idx3];
+
+//         // 按照 position(3) + texCoord(2) + normal(3) 的格式存储
+//         vertices.insert(vertices.end(), {
+//             v1.x, v1.y, v1.z, vt1.x, vt1.y, n1.x, n1.y, n1.z,
+//             v2.x, v2.y, v2.z, vt2.x, vt2.y, n2.x, n2.y, n2.z,
+//             v3.x, v3.y, v3.z, vt3.x, vt3.y, n3.x, n3.y, n3.z
+//         });
+//     }
+// }
+
+void read_face_fixed(std::vector<std::string> words, 
+                    std::vector<glm::vec3>& v,
+                    std::vector<glm::vec2>& vt,
+                    std::vector<glm::vec3>& vn,
+                    std::vector<float>& vertices) {
+
+    size_t triangleCount = words.size() - 3;
 
     for (size_t i = 0; i < triangleCount; ++i) {
-        // Triangle fan: first vertex, current vertex, next vertex
-        size_t idx1 = std::stoi(words[1]) - 1;      // First vertex (anchor)
-        size_t idx2 = std::stoi(words[2 + i]) - 1;  // Current vertex
-        size_t idx3 = std::stoi(words[3 + i]) - 1;  // Next vertex
+        int idxSet[3][3];
 
-        // 获取顶点位置
-        glm::vec3 v1 = v[idx1];
-        glm::vec3 v2 = v[idx2];
-        glm::vec3 v3 = v[idx3];
-
-        // 获取法线，如果没有则计算面法线
-        glm::vec3 n1, n2, n3;
-        if (!vn.empty() && idx1 < vn.size() && idx2 < vn.size() && idx3 < vn.size()) {
-            n1 = vn[idx1];
-            n2 = vn[idx2];
-            n3 = vn[idx3];
-        } else {
-            // 计算面法线
-            glm::vec3 edge1 = v2 - v1;
-            glm::vec3 edge2 = v3 - v1;
-            glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
-            n1 = n2 = n3 = faceNormal;
+        for (int k = 0; k < 3; ++k) {
+            std::string w = words[k == 0 ? 1 : 2 + i + (k-1)];
+            std::vector<std::string> parts = split(w, "/");
+            idxSet[k][0] = std::stoi(parts[0]) - 1;
+            idxSet[k][1] = parts.size() > 1 && !parts[1].empty() ? std::stoi(parts[1]) - 1 : -1;
+            idxSet[k][2] = parts.size() > 2 ? std::stoi(parts[2]) - 1 : -1;
         }
 
-        // 默认纹理坐标
-        glm::vec2 defaultTexCoord(0.0f, 0.0f);
+        // 計算面法線（用 normalize 後的頂點）
+        glm::vec3 pos0 = v[idxSet[0][0]];
+        glm::vec3 pos1 = v[idxSet[1][0]];
+        glm::vec3 pos2 = v[idxSet[2][0]];
+        
+        glm::vec3 edge1 = pos1 - pos0;
+        glm::vec3 edge2 = pos2 - pos0;
+        glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
 
-        // 按照 position(3) + texCoord(2) + normal(3) 的格式存储
-        vertices.insert(vertices.end(), {
-            v1.x, v1.y, v1.z, defaultTexCoord.x, defaultTexCoord.y, n1.x, n1.y, n1.z,
-            v2.x, v2.y, v2.z, defaultTexCoord.x, defaultTexCoord.y, n2.x, n2.y, n2.z,
-            v3.x, v3.y, v3.z, defaultTexCoord.x, defaultTexCoord.y, n3.x, n3.y, n3.z
-        });
+        for (int k = 0; k < 3; ++k) {
+            glm::vec3 pos = v[idxSet[k][0]];
+            glm::vec2 tex = idxSet[k][1] >= 0 && idxSet[k][1] < vt.size() ? vt[idxSet[k][1]] : glm::vec2(0.0f);
+            
+            // 使用計算的面法線，不使用 OBJ 的
+            glm::vec3 norm = faceNormal;
+
+            vertices.insert(vertices.end(), { pos.x, pos.y, pos.z, tex.x, tex.y, norm.x, norm.y, norm.z });
+        }
     }
 }
 
@@ -242,7 +289,7 @@ bool loadOBJ(const char* filepath, glm::mat4 preTransform) {
     }
     file.close();
 
-    // 先归一化顶点
+    // noralize vetices
     normalizeVertices(v);
 
     // 第三次读取：处理面并构建最终顶点数据
@@ -261,18 +308,21 @@ bool loadOBJ(const char* filepath, glm::mat4 preTransform) {
 const char* vertexShaderSource = R"(
 #version 330 core
 layout(location=0) in vec3 aPos;
-layout(location=1) in vec3 aNormal;
+layout(location=1) in vec2 aTexCoord;
+layout(location=2) in vec3 aNormal;
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
+out vec2 TexCoord;
 out vec3 FragPos;
 out vec3 Normal;
 
 void main(){
     FragPos = vec3(model * vec4(aPos,1.0));
     Normal = mat3(transpose(inverse(model))) * aNormal;
+    TexCoord = aTexCoord;
     gl_Position = projection * view * vec4(FragPos,1.0);
 }
 )";
@@ -281,11 +331,13 @@ const char* fragmentShaderSource = R"(
 #version 330 core
 in vec3 FragPos;
 in vec3 Normal;
+in vec2 TexCoord;
 
 out vec4 FragColor;
 
 uniform vec3 lightPos;
 uniform vec3 viewPos;
+uniform sampler2D texture1;
 
 void main(){
     vec3 ambient = vec3(0.2);
@@ -293,8 +345,9 @@ void main(){
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * vec3(0.8);
-    vec3 result = ambient + diffuse;
-    FragColor = vec4(result,1.0);
+    vec3 lighting = ambient + diffuse;
+    vec3 texColor = texture(texture1, TexCoord).rgb;
+    FragColor = vec4(texColor * lighting, 1.0);
 }
 )";
 
@@ -319,7 +372,7 @@ int main(){
 
     // Load OBJ
     glm::mat4 identity = glm::mat4(1.0f);
-    loadOBJ("../models/dino.obj", identity);
+    loadOBJ("../models/buddha.obj", identity);
 
     // Shader compile
     unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -337,6 +390,27 @@ int main(){
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
+    // load texture
+    int texWidth, texHeight, nrChannels;
+    unsigned char* data = stbi_load("../models/buddha-atlas.jpg", &texWidth, &texHeight, &nrChannels, 0);
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    // 設定貼圖參數
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // 上傳貼圖
+    if (data) {
+        GLenum format = nrChannels == 3 ? GL_RGB : GL_RGBA;
+        glTexImage2D(GL_TEXTURE_2D, 0, format, texWidth, texHeight, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    stbi_image_free(data);
+
     // VAO VBO
     unsigned int VBO, VAO;
     glGenVertexArrays(1,&VAO);
@@ -349,9 +423,11 @@ int main(){
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(float), (void*)(5*sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8*sizeof(float), (void*)(3*sizeof(float)));
     glEnableVertexAttribArray(1);
 
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8*sizeof(float), (void*)(5*sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -396,6 +472,10 @@ int main(){
         glUniformMatrix4fv(projLoc,1,GL_FALSE,glm::value_ptr(projection));
         glUniform3f(lightLoc,-10.0f,10.0f,100.0f);
         glUniform3f(viewPosLoc,0.0f,0.0f,10.0f);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glUniform1i(glGetUniformLocation(shaderProgram, "texture1"), 0);
 
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, vertices.size()/8);
