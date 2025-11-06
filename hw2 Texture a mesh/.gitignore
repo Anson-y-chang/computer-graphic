@@ -1,0 +1,6 @@
+# macOS 系統檔案
+.DS_Store
+
+# CMake build output
+/build/
+/build/*
