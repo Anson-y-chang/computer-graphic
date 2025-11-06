@@ -2,5 +2,9 @@
 .DS_Store
 
 # CMake build output
-/build/
-/build/*
+/hw1 Render a 3D Mesh/build
+/hw1 Render a 3D Mesh/models
+/hw2 Texture a mesh/build
+/hw2 Texture a mesh/models
+/hw3 Textured Campus Scene Animation copy/build
+/hw3 Textured Campus Scene Animation copy/models
